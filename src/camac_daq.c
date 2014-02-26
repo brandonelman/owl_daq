@@ -70,7 +70,6 @@ int initParameters(short * crate_id){
 }
 
 int saveData(FILE *file, int num_pulses, unsigned short *data){
-  //Need to dynamically allocate data
   int i;
   char s[30];
   for(i  = 0; i < num_pulses; i++) {
@@ -150,9 +149,8 @@ int main(int argc, char **argv) {
 
   sprintf(file_name, "%d_%d_%d_%d_%d_conf.dat", tm.tm_year+1900, tm.tm_mon+1, tm.tm_mday, tm.tm_hour, tm.tm_min); 
   file = fopen(file_name, "w+b");
-  saveConfig(config, file);
+  saveConfig(&config, file);
   
-
   //Close crate_id, which ends the connection with the C111C controller
   err = CRCLOSE(crate_id);
   if (err < 0 || cr_op.X != 1){
