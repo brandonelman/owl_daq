@@ -23,7 +23,7 @@ void IRQHandler(short crate_id, short irq_type, unsigned int irq_data) {
 
 int initParameters(short crate_id){
   short err;
-  err = CRTOUT(crate_id, 1000);
+  err = CRTOUT(crate_id, 100);
   if (err < 0) {
     printf("Error occurs setting timeout: %d\n", err);
     return 1;
@@ -116,7 +116,7 @@ int main(int argc, char **argv) {
   cr_op.N = ADC_POSITION; //Position in Crate is the ADC
   cr_op.A = config.subaddress; //Subaddress 
 
-  // MAIN ACQUISITION LOOP
+
   cr_op.F = 26; //Enable LAM 
   err = CFSA(crate_id, &cr_op);
   if (err < 0 || cr_op.X != 1){ 
@@ -124,31 +124,36 @@ int main(int argc, char **argv) {
     return 1;
   }
 
+  // MAIN ACQUISITION LOOP
   for (i = 0; i < config.num_pulses; i++){
+      
     if (i % 1000 == 0)
       printf("%d pulses completed\n", i);
      
     err = CCLWT(crate_id, ADC_POSITION); //Waits for LAM Event on ADC slot
     if (err < 0 || cr_op.X != 1){ 
      printf("error occurs waiting for LAM: %d\n", err);
+     CRCLOSE(crate_id);
      return 1;
     }
     LACK(crate_id); //Acknowledge LAM
 
-    cr_op.F = 0; //Read Function
+    cr_op.F = 2; //Read Function
     err = CFSA(crate_id, &cr_op);
     if (err < 0 || cr_op.X != 1 || cr_op.Q != 1){ 
       printf("error executing CFSA Operation: %d\n", err);
+      CRCLOSE(crate_id);
       return 1;
     }
     integrated_pulses[i] = cr_op.DATA;
 
-    cr_op.F = 9; //Clear LAM
-    err = CFSA(crate_id, &cr_op);
-    if (err < 0 || cr_op.X != 1){ 
-      printf("error executing CFSA Operation: %d\n", err);
-      return 1;
-    }
+//  cr_op.F = 10; //Clear LAM
+//  err = CFSA(crate_id, &cr_op);
+//  if (err < 0 || cr_op.X != 1){ 
+//    printf("error executing CFSA Operation: %d\n", err);
+//    CRCLOSE(crate_id);
+//    return 1;
+//  }
   }
 
   saveData(data_file, config.num_pulses, integrated_pulses);

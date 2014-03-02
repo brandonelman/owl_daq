@@ -115,12 +115,13 @@ if __name__ == '__main__':
   if (input != ''):
     num_pulses = int(input)
   
-  print "Current PMT Serial for Channel {} is {}.".format(subaddress, pmt_serial)
+  print "Current PMT Serial for Subaddress {} is {}.".format(subaddress, pmt_serial)
   print "If correct, press enter. Otherwise, enter correct serial."
   input = raw_input('-->')
   if (input != ''):
     pmt_serial = input
-  input = raw_input("Enter voltage for PMT in Channel {} of ADC (default: {})(Sign matters!)".format(subaddress, pmt_voltage))
+  input = raw_input("Enter voltage for PMT in Subaddress {} of ADC (default: {})(Sign matters!)".format(subaddress, pmt_voltage))
+
   if (input != ''):
     pmt_voltage = int(input)
   
