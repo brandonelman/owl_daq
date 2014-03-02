@@ -1,0 +1,2 @@
+gcc -o bin/camac src/camac_daq.c src/config.c src/crate_lib.c -I include/ -L. -lpthread
+
