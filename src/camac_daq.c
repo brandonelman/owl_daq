@@ -12,7 +12,7 @@
 void IRQHandler(short crate_id, short irq_type, unsigned int irq_data) {
   switch (irq_type) {
     case LAM_INT: 
-                 LACK(crate_id);
+                  LACK(crate_id);
                   break;
     case COMBO_INT:
                   break;
@@ -21,31 +21,36 @@ void IRQHandler(short crate_id, short irq_type, unsigned int irq_data) {
   }
 }
 
-int initParameters(short crate_id){
-  short err;
-  err = CRTOUT(crate_id, 100);
-  if (err < 0) {
-    printf("Error occurs setting timeout: %d\n", err);
-    return 1;
+  int initParameters(short crate_id, CRATE_OP cr_op){
+
+    short err;
+    err = CRTOUT(crate_id, 10);
+    if (err < 0) {
+      printf("Error occurs setting timeout: %d\n", err);
+      return 1;
+    }
+
+//  err = CCCC(crate_id);
+//  if (err != CRATE_OK){
+//    printf("Error occuring with Crate Clear: %d\n", err);
+//    return 1;
+//  }
+
+    err = CCCZ(crate_id);
+    if (err != CRATE_OK){
+      printf("Error occuring with Dataway Init: %d\n", err);
+      return 1;
+    }
+
+    //Change dataway inhibit to 0
+    err = CCCI(crate_id, 0);
+    if (err < 0){ 
+      printf("error executing CCCI Operation: %d\n", err);
+      return 1;
+    }
+
+    return 0;
   }
-  err = CCCC(crate_id);
-  if (err != CRATE_OK){
-    printf("Error occuring with Crate Clear: %d\n", err);
-    return 1;
-  }
-  err = CCCZ(crate_id);
-  if (err != CRATE_OK){
-    printf("Error occuring with Dataway Init: %d\n", err);
-    return 1;
-  }
-  //Change dataway inhibit to 0
-  err = CCCI(crate_id, 0);
-  if (err < 0){ 
-    printf("error executing CCCI Operation: %d\n", err);
-    return 1;
-  }
-  return 0;
-}
 
 int scanCrate(short crate_id){
   short err;
@@ -78,26 +83,14 @@ int main(int argc, char **argv) {
   FILE *data_file;
   short crate_id;
   short err;
+//  char res_op;
   int i,j;
   CRATE_OP cr_op;
   char file_name[100];
   unsigned int scan_result;
   Config config;
 
-  crate_id = CROPEN("192.168.0.98");
-  if (crate_id < 0) {
-    printf("error %d opening connection with CAMAC Controller\n", crate_id);
-    return 1;
-  }
-  else
-    printf("Opened board!\n");
-  //Initialize crate_id, which is necessary for all CAMAC functions
-  if (initParameters(crate_id) != 0){
-    return 1;
-  }  
-  else
-    printf("Initialized Paramaters!\n");
- 
+
   parseConfig(argv[1], &config);
 
   sprintf(file_name, "%s/%s_%05d/%s_%05d_%s.conf", config.output_folder, 
@@ -113,9 +106,30 @@ int main(int argc, char **argv) {
 
   unsigned short integrated_pulses[config.num_pulses];
 
-  cr_op.N = ADC_POSITION; //Position in Crate is the ADC
-  cr_op.A = config.subaddress; //Subaddress 
 
+  //Initialize crate_id, which is necessary for all CAMAC functions
+  crate_id = CROPEN("192.168.0.98");
+  if (crate_id < 0) {
+    printf("error %d opening connection with CAMAC Controller\n", crate_id);
+    return 1;
+  }
+  else
+    printf("Opened board!\n");
+
+
+//if (initParameters(crate_id, cr_op) != 0){
+//  return 1;
+//}  
+  cr_op.N = ADC_POSITION; //Position in Crate of the ADC
+  cr_op.A = config.subaddress; //Subaddress 
+  printf("cr_op.N = %d ; cr_op.A = %d\n", cr_op.N, cr_op.A);
+
+
+  err = CRTOUT(crate_id, 20);
+  if (err < 0) {
+    printf("Error occurs setting timeout: %d\n", err);
+    return 1;
+  }
 
   cr_op.F = 26; //Enable LAM 
   err = CFSA(crate_id, &cr_op);
@@ -123,22 +137,19 @@ int main(int argc, char **argv) {
     printf("error executing CFSA Operation: %d\n", err);
     return 1;
   }
-
+  
   // MAIN ACQUISITION LOOP
   for (i = 0; i < config.num_pulses; i++){
-      
-    if (i % 1000 == 0)
-      printf("%d pulses completed\n", i);
-     
     err = CCLWT(crate_id, ADC_POSITION); //Waits for LAM Event on ADC slot
     if (err < 0 || cr_op.X != 1){ 
      printf("error occurs waiting for LAM: %d\n", err);
+     printf("cr_op.X = %d\n", cr_op.X);
      CRCLOSE(crate_id);
      return 1;
     }
-    LACK(crate_id); //Acknowledge LAM
 
-    cr_op.F = 2; //Read Function
+    //LACK(crate_id); //Acknowledge LAM
+    cr_op.F = 0; //Read Function
     err = CFSA(crate_id, &cr_op);
     if (err < 0 || cr_op.X != 1 || cr_op.Q != 1){ 
       printf("error executing CFSA Operation: %d\n", err);
@@ -146,14 +157,33 @@ int main(int argc, char **argv) {
       return 1;
     }
     integrated_pulses[i] = cr_op.DATA;
+    printf("integrated_pulses[%d] = %d\n", i, integrated_pulses[i]); 
 
-//  cr_op.F = 10; //Clear LAM
+    cr_op.F = 10; //Clear LAM
+    err = CFSA(crate_id, &cr_op);
+    if (err < 0 || cr_op.X != 1){ 
+      printf("error executing CFSA Operation: %d\n", err);
+      CRCLOSE(crate_id);
+      return 1;
+    }
+
+//  cr_op.F = 9; //Clear LAM
 //  err = CFSA(crate_id, &cr_op);
 //  if (err < 0 || cr_op.X != 1){ 
 //    printf("error executing CFSA Operation: %d\n", err);
 //    CRCLOSE(crate_id);
 //    return 1;
 //  }
+  err = CCCC(crate_id);
+  if (err != CRATE_OK){
+    printf("Error occuring with Crate Clear: %d\n", err);
+    return 1;
+  }
+
+
+
+    if (i % 1000 == 0)
+      printf("%d pulses completed\n", i);
   }
 
   saveData(data_file, config.num_pulses, integrated_pulses);
