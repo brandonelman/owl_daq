@@ -24,7 +24,7 @@ void IRQHandler(short crate_id, short irq_type, unsigned int irq_data) {
   int initParameters(short crate_id, CRATE_OP cr_op){
 
     short err;
-    err = CRTOUT(crate_id, 10);
+    err = CRTOUT(crate_id, 100);
     if (err < 0) {
       printf("Error occurs setting timeout: %d\n", err);
       return 1;
@@ -82,6 +82,7 @@ int main(int argc, char **argv) {
   FILE *conf_file;
   FILE *data_file;
   short crate_id;
+  char response[32];
   short err;
 //  char res_op;
   int i,j;
@@ -124,6 +125,11 @@ int main(int argc, char **argv) {
   cr_op.A = config.subaddress; //Subaddress 
   printf("cr_op.N = %d ; cr_op.A = %d\n", cr_op.N, cr_op.A);
 
+  err = CCCC(crate_id);
+  if (err != CRATE_OK){
+    printf("Error occuring with Crate Clear: %d\n", err);
+    return 1;
+  }
 
   err = CRTOUT(crate_id, 20);
   if (err < 0) {
@@ -137,17 +143,30 @@ int main(int argc, char **argv) {
     printf("error executing CFSA Operation: %d\n", err);
     return 1;
   }
+
+//cr_op.F = 10; //Clear LAM
+//err = CFSA(crate_id, &cr_op);
+//if (err < 0 || cr_op.X != 1){ 
+//  printf("error executing CFSA Operation: %d\n", err);
+//  CRCLOSE(crate_id);
+//  return 1;
+//} 
   
   // MAIN ACQUISITION LOOP
   for (i = 0; i < config.num_pulses; i++){
+    err = CCCC(crate_id);
+    if (err != CRATE_OK){
+      printf("Error occuring with Crate Clear: %d\n", err);
+      return 1;
+    }
+
     err = CCLWT(crate_id, ADC_POSITION); //Waits for LAM Event on ADC slot
     if (err < 0 || cr_op.X != 1){ 
      printf("error occurs waiting for LAM: %d\n", err);
      printf("cr_op.X = %d\n", cr_op.X);
-     CRCLOSE(crate_id);
-     return 1;
+     i -= 1;
+     continue;
     }
-
     //LACK(crate_id); //Acknowledge LAM
     cr_op.F = 0; //Read Function
     err = CFSA(crate_id, &cr_op);
@@ -167,25 +186,19 @@ int main(int argc, char **argv) {
       return 1;
     }
 
-//  cr_op.F = 9; //Clear LAM
-//  err = CFSA(crate_id, &cr_op);
-//  if (err < 0 || cr_op.X != 1){ 
-//    printf("error executing CFSA Operation: %d\n", err);
-//    CRCLOSE(crate_id);
-//    return 1;
-//  }
-  err = CCCC(crate_id);
-  if (err != CRATE_OK){
-    printf("Error occuring with Crate Clear: %d\n", err);
-    return 1;
-  }
+    err = CCCC(crate_id);
+    if (err != CRATE_OK){
+      printf("Error occuring with Crate Clear: %d\n", err);
+      return 1;
+    }
 
+    err = CCCC(crate_id);
+    if (err != CRATE_OK){
+      printf("Error occuring with Crate Clear: %d\n", err);
+      return 1;
+    }
 
-
-    if (i % 1000 == 0)
-      printf("%d pulses completed\n", i);
-  }
-
+ }
   saveData(data_file, config.num_pulses, integrated_pulses);
   fclose(data_file);
   

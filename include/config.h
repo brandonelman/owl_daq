@@ -7,7 +7,7 @@
 #include <inttypes.h>
 #include <time.h>
 
-#define ADC_POSITION 12
+#define ADC_POSITION 10
 #define MAX_STRING_LENGTH 100
 
 typedef struct Config{
