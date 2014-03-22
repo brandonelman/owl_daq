@@ -125,13 +125,13 @@ if __name__ == '__main__':
   if (input != ''):
     pmt_voltage = int(input)
   
-  if (pmt_voltage > 0):
-    hv_channel = 3 
-  elif(pmt_voltage < 0):
-    hv_channel = 0
+# if (pmt_voltage > 0):
+#   hv_channel = 3 
+# elif(pmt_voltage < 0):
+#   hv_channel = 0
   
 
-  input = raw_input("Attach PMT high voltage to HV Channel {} in V6521M.".format(hv_channel))
+# input = raw_input("Attach PMT high voltage to HV Channel {} in V6521M.".format(hv_channel))
   ####
   #Add more hardware settings here later
   ####
@@ -150,16 +150,16 @@ if __name__ == '__main__':
     cfg_parser.write(tmp_files[i]) 
     tmp_files[i].close()
 
-  input = raw_input("Turn on voltage? [y/n].")
-  if (input.lower() == 'y'):
+# input = raw_input("Turn on voltage? [y/n].")
+# if (input.lower() == 'y'):
 
-    print "Turning on voltage source..."
-    if (hv_channel == 3):
-      os.system("{} 0 0 0 {} 0 0".format(VOLT_UP_BIN, abs(pmt_voltage))) 
-    elif (hv_channel == 0):
-      os.system("{} {} 0 0 0 0 0".format(VOLT_UP_BIN, abs(pmt_voltage))) 
-    else:
-      print "Warning! Not turning on voltage!"      
+#   print "Turning on voltage source..."
+#   if (hv_channel == 3):
+#     os.system("{} 0 0 0 {} 0 0".format(VOLT_UP_BIN, abs(pmt_voltage))) 
+#   elif (hv_channel == 0):
+#     os.system("{} {} 0 0 0 0 0".format(VOLT_UP_BIN, abs(pmt_voltage))) 
+#   else:
+#     print "Warning! Not turning on voltage!"      
 
   print 'Now wait for {} minutes for heating of lamp and PMT'.format(WAIT_TIME)
   for i in xrange(WAIT_TIME, 0, -1):
@@ -185,6 +185,6 @@ if __name__ == '__main__':
     #Remove tmp file after run
     os.system("rm {}/{}".format(TMP_DIR, fn)) 
 
-  input = raw_input("Runs completed. Would you like to turn off voltage? [y/n]")
-  if (input.lower() == 'y'): 
-    os.system("{}".format(VOLT_DOWN_BIN))
+#  input = raw_input("Runs completed. Would you like to turn off voltage? [y/n]")
+#  if (input.lower() == 'y'): 
+#    os.system("{}".format(VOLT_DOWN_BIN))

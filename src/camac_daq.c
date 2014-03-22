@@ -141,17 +141,17 @@ int main(int argc, char **argv) {
   cr_op.F = 26; //Enable LAM 
   err = CFSA(crate_id, &cr_op);
   if (err < 0 || cr_op.X != 1){ 
-    printf("error executing CFSA Operation: %d\n", err);
+    printf("error executing CSSA Operation: %d\n", err);
+    CRCLOSE(crate_id);
     return 1;
   }
 
 //cr_op.F = 10; //Clear LAM
-//err = CFSA(crate_id, &cr_op);
-//if (err < 0 || cr_op.X != 1){ 
-//  printf("error executing CFSA Operation: %d\n", err);
-//  CRCLOSE(crate_id);
-//  return 1;
-//} 
+//err = CSSA(crate_id, &cr_op);                         //err = CFSA(crate_id, &cr_op);
+//if (err < 0 || cr_op.X != 1){                         //if (err < 0 || cr_op.X != 1){ 
+//  printf("error executing CSSA Operation: %d\n", err);//  printf("error executing CFSA Operation: %d\n", err);
+//  CRCLOSE(crate_id);                                  //  CRCLOSE(crate_id);
+//}                                                     //} 
   
   // MAIN ACQUISITION LOOP
   for (i = 0; i < config.num_pulses; i++){
@@ -166,6 +166,7 @@ int main(int argc, char **argv) {
       printf("error occurs waiting for LAM: %d\n", err);
       printf("cr_op.X = %d\n", cr_op.X);
      
+
       CRCLOSE(crate_id);
       crate_id = CROPEN("192.168.0.98");
       if (crate_id < 0){ 
@@ -177,20 +178,27 @@ int main(int argc, char **argv) {
       continue;
     }
 
+    cr_op.F = 8; //Read Function
+    err = CFSA(crate_id, &cr_op);
+    if (err < 0) { // || cr_op.X != 1 || cr_op.Q != 1){ 
+      printf("error executing CSSA Operation: %d\n", err);
+      CRCLOSE(crate_id);
+      break; 
+    }
     //LACK(crate_id); //Acknowledge LAM
     cr_op.F = 0; //Read Function
     err = CFSA(crate_id, &cr_op);
-    if (err < 0 || cr_op.X != 1 || cr_op.Q != 1){ 
-      printf("error executing CFSA Operation: %d\n", err);
+    if (err < 0) { // || cr_op.X != 1 || cr_op.Q != 1){ 
+      printf("error executing CSSA Operation: %d\n", err);
       CRCLOSE(crate_id);
       break; 
     }
     integrated_pulses[i] = cr_op.DATA;
     printf("integrated_pulses[%d] = %d\n", i, integrated_pulses[i]); 
 
-    cr_op.F = 10; //Clear LAM
+    cr_op.F = 10;
     err = CFSA(crate_id, &cr_op);
-    if (err < 0 || cr_op.X != 1){ 
+    if (err < 0){ // || cr_op.X != 1 || cr_op.Q != 1){ 
       printf("error executing CFSA Operation: %d\n", err);
       CRCLOSE(crate_id);
       break; 
@@ -215,7 +223,7 @@ int main(int argc, char **argv) {
   //Close crate_id, which ends the connection with the C111C controller
   
   err = CRCLOSE(crate_id);
-  if (err < 0 || cr_op.X != 1){
+  if (err < 0){
     printf("error %d closing connection with CAMAC controller \n", crate_id);
   return 1;
   }
