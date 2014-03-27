@@ -9,6 +9,7 @@
 
 #define ADC_POSITION 10
 #define MAX_STRING_LENGTH 100
+#define TIMEOUT 2
 
 typedef struct Config{
   int trigger_threshold_mv;

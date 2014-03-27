@@ -3,55 +3,10 @@
 #endif
 
 
-#include <time.h>
-#include <stdio.h>
+//#include <time.h>
+//#include <stdio.h>
 #include "crate_lib.h" 
 #include "config.h"
-#define TIMEOUT 2
-
-
-void IRQHandler(short crate_id, short irq_type, unsigned int irq_data) {
-  switch (irq_type) {
-    case LAM_INT: 
-                  LACK(crate_id);
-                  break;
-    case COMBO_INT:
-                  break;
-    case DEFAULT_INT:
-                  break;
-  }
-}
-
-  int initParameters(short crate_id, CRATE_OP cr_op){
-
-    short err;
-    err = CRTOUT(crate_id, TIMEOUT);
-    if (err < 0) {
-      printf("Error occurs setting timeout: %d\n", err);
-      return 1;
-    }
-
-//  err = CCCC(crate_id);
-//  if (err != CRATE_OK){
-//    printf("Error occuring with Crate Clear: %d\n", err);
-//    return 1;
-//  }
-
-    err = CCCZ(crate_id);
-    if (err != CRATE_OK){
-      printf("Error occuring with Dataway Init: %d\n", err);
-      return 1;
-    }
-
-    //Change dataway inhibit to 0
-    err = CCCI(crate_id, 0);
-    if (err < 0){ 
-      printf("error executing CCCI Operation: %d\n", err);
-      return 1;
-    }
-
-    return 0;
-  }
 
 int scanCrate(short crate_id){
   short err;
@@ -62,6 +17,7 @@ int scanCrate(short crate_id){
     printf("Error occurs scanning the CRATE: %d\n", err);
     return 1;
   }
+
   for (i = 0; i < 24; i++) 
     if (scan_result & (1 << i)) 
       printf("The slot %d is filled with a card.\n", i+1);
@@ -83,13 +39,12 @@ int main(int argc, char **argv) {
   FILE *conf_file;
   FILE *data_file;
   short crate_id;
-  char response[32];
   short err;
-//  char res_op;
   int i,j;
   CRATE_OP cr_op;
   char file_name[100];
   unsigned int scan_result;
+  short found_lam = 0;
   Config config;
 
 
@@ -118,10 +73,6 @@ int main(int argc, char **argv) {
   else
     printf("Opened board!\n");
 
-
-//if (initParameters(crate_id, cr_op) != 0){
-//  return 1;
-//}  
   cr_op.N = ADC_POSITION; //Position in Crate of the ADC
   cr_op.A = config.subaddress; //Subaddress 
   printf("cr_op.N = %d ; cr_op.A = %d\n", cr_op.N, cr_op.A);
@@ -132,7 +83,7 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  err = CRTOUT(crate_id, 20);
+  err = CRTOUT(crate_id, TIMEOUT);
   if (err < 0) {
     printf("Error occurs setting timeout: %d\n", err);
     return 1;
@@ -146,61 +97,54 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-//cr_op.F = 10; //Clear LAM
-//err = CSSA(crate_id, &cr_op);                         //err = CFSA(crate_id, &cr_op);
-//if (err < 0 || cr_op.X != 1){                         //if (err < 0 || cr_op.X != 1){ 
-//  printf("error executing CSSA Operation: %d\n", err);//  printf("error executing CFSA Operation: %d\n", err);
-//  CRCLOSE(crate_id);                                  //  CRCLOSE(crate_id);
-//}                                                     //} 
-  
   // MAIN ACQUISITION LOOP
   for (i = 0; i < config.num_pulses; i++){
-    err = CCCC(crate_id);
-    if (err != CRATE_OK){
-      printf("Error occuring with Crate Clear: %d\n", err);
-      break;
-    }
+//  err = CCCC(crate_id);
+//  if (err != CRATE_OK){
+//    printf("Error occuring with Crate Clear: %d\n", err);
+//    break;
+//  }
 
-    err = CCLWT(crate_id, ADC_POSITION); //Waits for LAM Event on ADC slot
-    if (err < 0 || cr_op.X != 1){ 
-      printf("error occurs waiting for LAM: %d\n", err);
-      printf("cr_op.X = %d\n", cr_op.X);
-     
-
-      CRCLOSE(crate_id);
-      crate_id = CROPEN("192.168.0.98");
-      if (crate_id < 0){ 
-        printf("error %d opening connection with CAMAC Controller\n", crate_id);
-        return 1;
+//    err = CCLWT(crate_id, ADC_POSITION); //Waits for LAM Event on ADC slot
+    while (!found_lam){
+      err = CCCC(crate_id);
+      if (err != CRATE_OK){
+        printf("Error occuring with Crate Clear: %d\n", err);
+        break; 
       }
 
-      i -= 1;
-      continue;
+      err = CTLM(crate_id, ADC_POSITION, &found_lam);
+      if (err < 0){ 
+        printf("error occurs waiting for LAM: %d\n", err);
+        printf("cr_op.X = %d\n", cr_op.X);
+        CRCLOSE(crate_id);
+        crate_id = CROPEN("192.168.0.98");
+        if (crate_id < 0){ 
+          printf("error %d opening connection with CAMAC Controller\n", crate_id);
+          return 1;
+        }
+        //i -= 1;
+        continue;
+      }
     }
 
-    cr_op.F = 8; //Read Function
-    err = CFSA(crate_id, &cr_op);
-    if (err < 0) { // || cr_op.X != 1 || cr_op.Q != 1){ 
-      printf("error executing CSSA Operation: %d\n", err);
-      CRCLOSE(crate_id);
-      break; 
-    }
-    //LACK(crate_id); //Acknowledge LAM
+    found_lam = 0;
     cr_op.F = 0; //Read Function
     err = CFSA(crate_id, &cr_op);
-    if (err < 0) { // || cr_op.X != 1 || cr_op.Q != 1){ 
+    if (err < 0) { 
       printf("error executing CSSA Operation: %d\n", err);
       CRCLOSE(crate_id);
       break; 
     }
     integrated_pulses[i] = cr_op.DATA;
+    //if (i%100 == 0){
     printf("integrated_pulses[%d] = %d\n", i, integrated_pulses[i]); 
+    //}
 
     cr_op.F = 10;
     err = CFSA(crate_id, &cr_op);
-    if (err < 0){ // || cr_op.X != 1 || cr_op.Q != 1){ 
+    if (err < 0){ 
       printf("error executing CFSA Operation: %d\n", err);
-      CRCLOSE(crate_id);
       break; 
     }
 
@@ -210,18 +154,17 @@ int main(int argc, char **argv) {
       break; 
     }
 
-    err = CCCC(crate_id);
-    if (err != CRATE_OK){
-      printf("Error occuring with Crate Clear: %d\n", err);
-      break; 
-    }
+//  err = CCCC(crate_id);
+//  if (err != CRATE_OK){
+//    printf("Error occuring with Crate Clear: %d\n", err);
+//    break; 
+//  }
 
   }
   saveData(data_file, config.num_pulses, integrated_pulses);
   fclose(data_file);
   
   //Close crate_id, which ends the connection with the C111C controller
-  
   err = CRCLOSE(crate_id);
   if (err < 0){
     printf("error %d closing connection with CAMAC controller \n", crate_id);

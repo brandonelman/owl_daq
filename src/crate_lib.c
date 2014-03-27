@@ -1070,8 +1070,12 @@ short CCCC(short crate_id)
 	if (crate_info[crate_id].no_bin_resp != NO_BIN_RESPONSE) {
 		msgsize = BIN_Response(crate_id, bin_rcv, 3);
 		
-		if ((bin_rcv[1] != BIN_CCCC_CMD) || (msgsize != 3))
+		if ((bin_rcv[1] != BIN_CCCC_CMD) || (msgsize != 3)){
+                        printf("In CCCC\n");
+                        printf("bin_rcv = %d\n", bin_rcv[1]);
+                        printf("msgsize = %d\n", msgsize);
 			return CRATE_BIN_ERROR;
+                }
 	} 
 
 	return CRATE_OK;
@@ -1170,10 +1174,13 @@ short CTLM(short crate_id, char slot, char *res)
 	msgsize += BIN_AdjustFrame(&bin_cmd[msgsize], 1);
 	bin_cmd[msgsize++] = ETX;
 
+//        printf("BEFORE CSOCK_SEND \n");
 	if (csock_send(crate_info[crate_id].sock_bin, bin_cmd, msgsize) <= 0)
 		return CRATE_BIN_ERROR;
-
+//        printf("AFTER CSOCK_SEND \n");
 	msgsize = BIN_Response(crate_id, bin_rcv, 4);
+//        printf("AFTER BIN_Response \n");
+        
 
 	if ((bin_rcv[1] != BIN_CTLM_CMD) || (msgsize != 4))
 		return CRATE_BIN_ERROR;
@@ -1212,9 +1219,10 @@ short CCLWT(short crate_id, char slot)
 
 	msgsize = BIN_Response(crate_id, bin_rcv, 3);
 
-	if ((bin_rcv[1] != BIN_CCLWT_CMD) || (msgsize != 3))
-		return CRATE_BIN_ERROR;
+	if ((bin_rcv[1] != BIN_CCLWT_CMD) || (msgsize != 3)){
 
+		return CRATE_BIN_ERROR;
+        }
 	return CRATE_OK;
 }
 
